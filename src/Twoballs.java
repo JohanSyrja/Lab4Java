@@ -1,7 +1,6 @@
-
 import java.awt.*;
 import java.awt.event.*;
-import java.util.Map;
+import java.util.ArrayList;
 import javax.swing.*;
 
 /**
@@ -32,10 +31,8 @@ public class Twoballs {
 /**
  * *****************************************************************************************
  * Coord
- *
  * A coordinate is a pair (x,y) of doubles. Also used to represent vectors. Here
  * are various utility methods to compute with vectors.
- *
  *
  */
 class Coord {
@@ -62,6 +59,7 @@ class Coord {
         return new Coord(x / magnitude(), y / magnitude());
     }
 
+
     void increase(Coord c) {           
         x += c.x;
         y += c.y;
@@ -71,6 +69,9 @@ class Coord {
         x -= c.x;
         y -= c.y;
     }
+
+
+
     
     static double scal(Coord a, Coord b) {      // scalar product
         return a.x * b.x + a.y * b.y;
@@ -97,7 +98,6 @@ class Coord {
 /**
  * ****************************************************************************************
  * Table
- *
  * The table has some constants and instance variables relating to the graphics and
  * the balls. When simulating the balls it starts a timer
  * which fires UPDATE_FREQUENCY times per second. Each time the timer is
@@ -106,23 +106,19 @@ class Coord {
  *
  */
 class Table extends JPanel implements MouseListener, MouseMotionListener, ActionListener {
-
-    private final int   TABLE_WIDTH    = 300;
-    private final int   TABLE_HEIGHT   = 500;
-    private final int   WALL_THICKNESS = 20;
+    public static final  int   TABLE_WIDTH    = 300;
+    public static final  int   TABLE_HEIGHT   = 500;
+    public static  final int   WALL_THICKNESS = 20;
     private final Color COLOR          = Color.green;
     private final Color WALL_COLOR     = Color.black;
     private       Ball  ball1, ball2;
     private final Timer simulationTimer;
-    private Map<Integer,Integer> northWall;
-    private Map<Integer,Integer> southWall;
-    private Map<Integer,Integer> eastWall;
-    private Map<Integer,Integer> westWall;
+
 
     
     Table() {
 
-        setNorthWallPos();
+        //setNorthWallPos();
 
         setPreferredSize(new Dimension(TABLE_WIDTH + 2 * WALL_THICKNESS,
                                        TABLE_HEIGHT + 2 * WALL_THICKNESS));
@@ -149,18 +145,14 @@ class Table extends JPanel implements MouseListener, MouseMotionListener, Action
             simulationTimer.stop();
         }
     }
-
-
-    private void setNorthWallPos(){
-        int yPos = WALL_THICKNESS;
-        for (int i = 0 + WALL_THICKNESS; i >= TABLE_WIDTH - WALL_THICKNESS; i++){
-            northWall.put(i,yPos);
-        }
+    public int getTABLE_WIDTH(){
+        return TABLE_WIDTH;
     }
 
-    public Map<Integer,Integer> getNorthWallPos(){
-        return northWall;
-    }
+
+
+
+
 
 
 
@@ -213,7 +205,6 @@ class Table extends JPanel implements MouseListener, MouseMotionListener, Action
 /**
  * ****************************************************************************************
  * Ball:
- *
  * The ball has instance variables relating to its graphics and game state:
  * position, velocity, and the position from which a shot is aimed (if any).
  * 
@@ -231,6 +222,7 @@ class Ball {
     private Coord position;
     private Coord velocity;
     private Coord aimPosition;              // if aiming for a shot, ow null
+
 
     Ball(Coord initialPosition) {
         position = initialPosition;
@@ -250,12 +242,13 @@ class Ball {
             aimPosition = grabPosition;
         }
     }
-    
     void updateAimPosition(Coord newPosition) {
         if (isAiming()){
             aimPosition = newPosition;
         }
     }
+
+
 
     void shoot() {
         if (isAiming()) {
@@ -263,27 +256,48 @@ class Ball {
             velocity = Coord.mul(Math.sqrt(10.0 * aimingVector.magnitude() / Twoballs.UPDATE_FREQUENCY),
                                  aimingVector.norm());  // don't ask - determined by experimentation
             aimPosition = null;
+
         }
     }
     
     void move() {
-         if (isMoving()) {                                   
-            position.increase(velocity);      
+         if (isMoving()) {
+            position.increase(velocity);
             velocity.decrease(Coord.mul(FRICTION_PER_UPDATE, velocity.norm()));
-        }                                          
+             if (ballCollisonWall()){
+                 velocity.x *= -1;
+                 velocity.y = 0;
+             }
+        }
     }
 
-    /*
-    private int[][] getBallPos(){
 
-    }*/
-
-    void ballCollisonWall(){
-        // collision angle <- from aimingvector
-        // collision speed
-        //
-
+    ArrayList<Coord> getballHitbox(){
+        ArrayList<Coord> hitbox = new ArrayList<Coord>(360);
+        for (double i = 0; i < 180; i++){
+            hitbox.add(new Coord(position.x - (RADIUS)*Math.sin((i)),
+                    position.y + (RADIUS)*Math.cos((i))));
+        }
+        System.out.println(hitbox.get(0).y);
+        return hitbox;
     }
+
+
+    boolean ballCollisonWall(){
+
+        for (Coord ballCoord : getballHitbox()){
+            if (ballCoord.y <= Table.WALL_THICKNESS ||
+                    ballCoord.y >= Table.TABLE_HEIGHT + Table.WALL_THICKNESS) {
+                return true;
+            }
+            if (ballCoord.x <= Table.WALL_THICKNESS ||
+                    ballCoord.x >= Table.TABLE_WIDTH + Table.WALL_THICKNESS){
+                return true;
+            }
+        }
+        return false;
+    }
+
     
     // paint: to draw the ball, first draw a black ball
     // and then a smaller ball of proper color inside
