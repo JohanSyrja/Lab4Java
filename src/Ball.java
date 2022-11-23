@@ -1,0 +1,183 @@
+import java.awt.*;
+import java.util.ArrayList;
+
+/**
+ * ****************************************************************************************
+ * Ball:
+ * The ball has instance variables relating to its graphics and game state:
+ * position, velocity, and the position from which a shot is aimed (if any).
+ *
+ */
+class Ball {
+
+    private final Color COLOR               = Color.white;
+    private final int    BORDER_THICKNESS    = 2;
+    private final double RADIUS              = 15;
+    private final double DIAMETER            = 2 * RADIUS;
+    private final double FRICTION            = 0.015;                          // its friction constant (normed for 100 updates/second)
+    private final double FRICTION_PER_UPDATE =                                 // friction applied each simulation step
+            1.0 - Math.pow(1.0 - FRICTION,                       // don't ask - I no longer remember how I got to this
+                    100.0 / Twoballs.UPDATE_FREQUENCY);
+    private Coord position;
+    private Coord velocity;
+
+    private boolean northSide;
+    private boolean southSide;
+
+    private Coord aimPosition;              // if aiming for a shot, ow null
+
+
+    Ball(Coord initialPosition) {
+        position = initialPosition;
+        northSide = false;
+        southSide = false;
+        velocity = Coord.ZERO;       // WARNING! Are initial velocities
+    }                                // clones or aliases? Is this important?
+
+    boolean isMovingToward(Ball collisionBall){
+       return Coord.distance(Coord.add(position,velocity), Coord.add(collisionBall.position,collisionBall.velocity)) <
+               Coord.distance(position,collisionBall.position);
+    }
+
+
+
+    boolean isColliding(Ball collisionBall){
+        return Coord.distance(position,collisionBall.position) <= DIAMETER;
+    }
+
+    void ballCollision(Ball collisionBall){
+        double x_diff = position.x - collisionBall.position.x;
+        double y_diff = position.y - collisionBall.position.y;
+        double hypo = Math.sqrt(Math.pow(x_diff,2) + Math.pow(y_diff,2));
+        double dx = x_diff/hypo;
+        double dy = y_diff/hypo;
+        double impulse = ((collisionBall.velocity.x * dx) + (collisionBall.velocity.y * dy)) -
+                ((velocity.x * dx)  + (velocity.y * dy));
+        if (isColliding(collisionBall) && isMovingToward(collisionBall)){
+            velocity.x = velocity.x + (impulse * dx);
+            velocity.y = velocity.y + (impulse * dy);
+
+            collisionBall.velocity.x  = collisionBall.velocity.x - (impulse * dx);
+            collisionBall.velocity.y = collisionBall.velocity.y - (impulse * dy);
+        }
+    }
+
+    private boolean isAiming() {
+        return aimPosition != null;
+    }
+
+    boolean isMoving() {    // if moving too slow I am deemed to have stopped
+        return velocity.magnitude() > FRICTION_PER_UPDATE;
+    }
+
+    void setAimPosition(Coord grabPosition) {
+        if (Coord.distance(position, grabPosition) <= RADIUS) {
+            aimPosition = grabPosition;
+        }
+    }
+    void updateAimPosition(Coord newPosition) {
+        if (isAiming()){
+            aimPosition = newPosition;
+        }
+    }
+
+
+
+    void shoot() {
+        if (isAiming()) {
+            Coord aimingVector = Coord.sub(position, aimPosition);
+            velocity = Coord.mul(Math.sqrt(10.0 * aimingVector.magnitude() / Twoballs.UPDATE_FREQUENCY),
+                    aimingVector.norm());  // don't ask - determined by experimentation
+            aimPosition = null;
+
+        }
+    }
+
+    void move() {
+            if (isMoving()) {
+                for (Ball ball : Table.balls) {
+                    for (Ball ball1 : Table.balls) {
+                        ball.ballCollision(ball1);
+                    }
+                }
+                position.increase(velocity);
+                velocity.decrease(Coord.mul(FRICTION_PER_UPDATE, velocity.norm()));
+                if (ballCollisionWall()){
+
+                    if(southSide || northSide){
+                        velocity.y *= -1;
+                    }
+                    else {
+                            velocity.x *= -1;
+                    }
+                }
+                northSide = false;
+                southSide = false;
+            }
+
+
+    }
+
+
+
+    public ArrayList<Coord> getballHitbox(){
+        ArrayList<Coord> hitbox = new ArrayList<Coord>(360);
+        for (double i = 0; i < 360; i++){
+            hitbox.add(new Coord(position.x - (RADIUS)*Math.sin((i)),
+                    position.y + (RADIUS)*Math.cos((i))));
+        }
+        return hitbox;
+    }
+
+
+    boolean ballCollisionWall(){
+
+        for (Coord ballCoord : getballHitbox()){
+            if (ballCoord.y <= Table.WALL_THICKNESS){ //northWall
+                northSide = true;
+                return true;
+            }
+            if (ballCoord.y >= Table.TABLE_HEIGHT + Table.WALL_THICKNESS) { // southWall
+                southSide = true;
+                return true;
+            }
+            if (ballCoord.x <= Table.WALL_THICKNESS){ // westWall
+                return true;
+            }
+            if  (ballCoord.x >= Table.TABLE_WIDTH + Table.WALL_THICKNESS){ // eastWall
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    // paint: to draw the ball, first draw a black ball
+    // and then a smaller ball of proper color inside
+    // this gives a nice thick border
+    void paint(Graphics2D g2D) {
+        g2D.setColor(Color.black);
+        g2D.fillOval(
+                (int) (position.x - RADIUS + 0.5),
+                (int) (position.y - RADIUS + 0.5),
+                (int) DIAMETER,
+                (int) DIAMETER);
+        g2D.setColor(COLOR);
+        g2D.fillOval(
+                (int) (position.x - RADIUS + 0.5 + BORDER_THICKNESS),
+                (int) (position.y - RADIUS + 0.5 + BORDER_THICKNESS),
+                (int) (DIAMETER - 2 * BORDER_THICKNESS),
+                (int) (DIAMETER - 2 * BORDER_THICKNESS));
+        if (isAiming()) {
+            paintAimingLine(g2D);
+        }
+    }
+
+    private void paintAimingLine(Graphics2D graph2D) {
+        Coord.paintLine(
+                graph2D,
+                aimPosition,
+                Coord.sub(Coord.mul(2, position), aimPosition)
+        );
+    }
+} // end  class Ball
