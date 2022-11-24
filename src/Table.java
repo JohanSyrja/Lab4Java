@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -13,40 +14,39 @@ import java.util.ArrayList;
  * events to accomplish repaints and to stop or start the timer.
  *
  */
-class Table extends JPanel implements MouseListener, MouseMotionListener, ActionListener {
-    public static final  int   TABLE_WIDTH    = 300;
+class Table extends JPanel implements MouseListener, ActionListener {
+    public static final  int   TABLE_WIDTH    = 600;
     public static final  int   TABLE_HEIGHT   = 500;
     public static  final int   WALL_THICKNESS = 20;
     private final Color COLOR          = Color.green;
     private final Color WALL_COLOR     = Color.black;
-    private       Ball  ball1, ball2;
+    int nbrBalls;
     public static ArrayList<Ball> balls;
     private final Timer simulationTimer;
 
 
 
     Table() {
-
-        //setNorthWallPos();
-
+        nbrBalls = 10;
+        JButton b1 = new JButton("Start");
+        JTextField t1 = new JTextField("");
         setPreferredSize(new Dimension(TABLE_WIDTH + 2 * WALL_THICKNESS,
                 TABLE_HEIGHT + 2 * WALL_THICKNESS));
         createInitialBalls();
-
+        setLayout(new BorderLayout());
+        add(b1);
+        add(t1);
         addMouseListener(this);
-        addMouseMotionListener(this);
 
         simulationTimer = new Timer((int) (1000.0 / Twoballs.UPDATE_FREQUENCY), this);
     }
 
     private void createInitialBalls(){
-        final Coord firstInitialPosition = new Coord(100, 100);
-        final Coord secondInitialPosition = new Coord(200, 200);
-        balls = new ArrayList<Ball>();
-        ball1 = new Ball(firstInitialPosition);
-        ball2 = new Ball(secondInitialPosition);
-        balls.add(ball1);
-        balls.add(ball2);
+        balls = new ArrayList<>(nbrBalls);
+        for (int i = 0; i < nbrBalls; i++){
+            balls.add(new Ball(new Coord(WALL_THICKNESS *  2 + (Math.random()* TABLE_WIDTH/4),WALL_THICKNESS + Math.random() * (TABLE_HEIGHT - WALL_THICKNESS))));
+        }
+        repaint();
     }
 
     public void actionPerformed(ActionEvent e) {          // Timer event
@@ -54,34 +54,20 @@ class Table extends JPanel implements MouseListener, MouseMotionListener, Action
           ball.move();
           repaint();
         }
-        if (!ball1.isMoving() && !ball2.isMoving()){
-            simulationTimer.stop();
-        }
 
     }
 
 
     public void mousePressed(MouseEvent event) {
-        Coord mousePosition = new Coord(event);
-        ball1.setAimPosition(mousePosition);
-        ball2.setAimPosition(mousePosition);
         repaint();                                          //  To show aiming line
     }
 
     public void mouseReleased(MouseEvent e) {
-        ball1.shoot();
-        ball2.shoot();
         if (!simulationTimer.isRunning()) {
             simulationTimer.start();
         }
     }
 
-    public void mouseDragged(MouseEvent event) {
-        Coord mousePosition = new Coord(event);
-        ball1.updateAimPosition(mousePosition);
-        ball2.updateAimPosition(mousePosition);
-        repaint();
-    }
 
     // Obligatory empty listener methods
     public void mouseClicked(MouseEvent e) {}
@@ -97,12 +83,13 @@ class Table extends JPanel implements MouseListener, MouseMotionListener, Action
                 RenderingHints.VALUE_ANTIALIAS_ON);
 
         g2D.setColor(WALL_COLOR);
-        g2D.fillRect(0, 0, TABLE_WIDTH + 2 * WALL_THICKNESS, TABLE_HEIGHT + 2 * WALL_THICKNESS);
+        g2D.fillRect(0, 0, TABLE_WIDTH/2 + 2 * WALL_THICKNESS, TABLE_HEIGHT + 2 * WALL_THICKNESS);
 
         g2D.setColor(COLOR);
-        g2D.fillRect(WALL_THICKNESS, WALL_THICKNESS, TABLE_WIDTH, TABLE_HEIGHT);
+        g2D.fillRect(WALL_THICKNESS, WALL_THICKNESS, TABLE_WIDTH/2, TABLE_HEIGHT);
 
-        ball1.paint(g2D);
-        ball2.paint(g2D);
+        for (Ball ball : balls) {
+            ball.paint(g2D);
+        }
     }
 }  // end class Table

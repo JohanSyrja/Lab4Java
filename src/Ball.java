@@ -10,11 +10,16 @@ import java.util.ArrayList;
  */
 class Ball {
 
+    final double INIT_SICK_PROB = 0.2;
+    final double GET_WELL_PROB = 0.4;
+    final double DIE_PROB = 0.02;
+    final double INFECT_PROB = 0.8;
+
     private final Color COLOR               = Color.white;
     private final int    BORDER_THICKNESS    = 2;
     private final double RADIUS              = 15;
     private final double DIAMETER            = 2 * RADIUS;
-    private final double FRICTION            = 0.015;                          // its friction constant (normed for 100 updates/second)
+    private final double FRICTION            = 0;                          // its friction constant (normed for 100 updates/second)
     private final double FRICTION_PER_UPDATE =                                 // friction applied each simulation step
             1.0 - Math.pow(1.0 - FRICTION,                       // don't ask - I no longer remember how I got to this
                     100.0 / Twoballs.UPDATE_FREQUENCY);
@@ -26,8 +31,14 @@ class Ball {
 
     private Coord aimPosition;              // if aiming for a shot, ow null
 
+    boolean isSick;
+    boolean isDead;
+
 
     Ball(Coord initialPosition) {
+        isSick = Math.random() < INIT_SICK_PROB;
+        isDead = false;
+
         position = initialPosition;
         northSide = false;
         southSide = false;
@@ -56,7 +67,6 @@ class Ball {
         if (isColliding(collisionBall) && isMovingToward(collisionBall)){
             velocity.x = velocity.x + (impulse * dx);
             velocity.y = velocity.y + (impulse * dy);
-
             collisionBall.velocity.x  = collisionBall.velocity.x - (impulse * dx);
             collisionBall.velocity.y = collisionBall.velocity.y - (impulse * dy);
         }
@@ -80,19 +90,6 @@ class Ball {
             aimPosition = newPosition;
         }
     }
-
-
-
-    void shoot() {
-        if (isAiming()) {
-            Coord aimingVector = Coord.sub(position, aimPosition);
-            velocity = Coord.mul(Math.sqrt(10.0 * aimingVector.magnitude() / Twoballs.UPDATE_FREQUENCY),
-                    aimingVector.norm());  // don't ask - determined by experimentation
-            aimPosition = null;
-
-        }
-    }
-
     void move() {
             if (isMoving()) {
                 for (Ball ball : Table.balls) {
